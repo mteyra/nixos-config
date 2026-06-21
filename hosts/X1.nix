@@ -137,8 +137,8 @@
     firefox
     kitty
     thunar
-    xfce.thunar-archive-plugin
-    xfce.tumbler
+    thunar-archive-plugin
+    tumbler
 
     # Hyprland tools
     rofi
