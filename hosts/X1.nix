@@ -14,6 +14,7 @@
   # Boot
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-bore;
 
   # Identity / locale
   networking.hostName = "X1";
@@ -112,6 +113,7 @@
   environment.systemPackages = with pkgs; [
     # Core terminal tools
     vim
+    neovim
     nano
     wget
     curl
