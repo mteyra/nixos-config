@@ -15,10 +15,12 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-bore;
+  boot.kernelModules = [ "wacom" ];
 
   # Identity / locale
   networking.hostName = "X1";
   time.timeZone = "Europe/Berlin";
+  environment.etc."timezone".text = "Europe/Berlin\n";
   i18n.defaultLocale = "en_US.UTF-8";
   console.keyMap = "de";
   services.xserver.xkb.layout = "de";
@@ -35,6 +37,23 @@
   services.upower.enable = true;
   services.power-profiles-daemon.enable = true;
   services.libinput.enable = true;
+
+  # The internal X1 Yoga Wacom touch/pen sensor has dropped off USB after
+  # suspend on this machine. Keep it out of runtime autosuspend when present.
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="056a", ATTR{idProduct}=="5144", TEST=="power/control", ATTR{power/control}="on"
+    ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="056a", ATTR{idProduct}=="5144", TEST=="power/autosuspend_delay_ms", ATTR{power/autosuspend_delay_ms}="-1"
+  '';
+
+  powerManagement.resumeCommands = ''
+    for dev in /sys/bus/usb/devices/*; do
+      [ -r "$dev/idVendor" ] || continue
+      [ "$(cat "$dev/idVendor")" = "056a" ] || continue
+      [ "$(cat "$dev/idProduct")" = "5144" ] || continue
+      [ -w "$dev/power/control" ] && echo on > "$dev/power/control"
+      [ -w "$dev/power/autosuspend_delay_ms" ] && echo -1 > "$dev/power/autosuspend_delay_ms"
+    done
+  '';
 
   zramSwap = {
     enable = true;
@@ -57,6 +76,7 @@
   };
 
   security.polkit.enable = true;
+  security.rtkit.enable = true;
   programs.dconf.enable = true;
 
   # Minimal ASCII/TUI login manager
@@ -128,6 +148,7 @@
     fd
     ripgrep
     fzf
+    jq
 
     # Shell / prompt
     fish
@@ -148,16 +169,24 @@
     satty
     swappy
     hyprcursor
+    libinput
+    usbutils
+    wev
 
     # Theme tooling
     papirus-icon-theme
+    papirus-folders
     numix-icon-theme-circle
+    tela-icon-theme
     bibata-cursors
     adw-gtk3
+    orchis-theme
+    colloid-gtk-theme
     nwg-look
     libsForQt5.qt5ct
     qt6Packages.qt6ct
     glib
+    gsettings-desktop-schemas
 
     # GUI utilities
     gedit
