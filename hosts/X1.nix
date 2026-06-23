@@ -21,6 +21,12 @@
   boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-bore;
   boot.kernelModules = [ "wacom" ];
 
+  boot.kernelParams = [
+    "quiet"
+    "loglevel=3"
+    "udev.log_level=3"
+  ];
+
   # Identity / locale
   networking.hostName = "X1";
   time.timeZone = "Europe/Berlin";
@@ -41,6 +47,9 @@
   services.upower.enable = true;
   services.power-profiles-daemon.enable = true;
   services.libinput.enable = true;
+  services.udisks2.enable = true;
+  services.gvfs.enable = true;
+  services.fprintd.enable = true;
 
   # The internal X1 Yoga Wacom touch/pen sensor has dropped off USB after
   # suspend on this machine. Keep it out of runtime autosuspend when present.
@@ -82,6 +91,7 @@
   security.polkit.enable = true;
   security.rtkit.enable = true;
   programs.dconf.enable = true;
+  programs.nix-ld.enable = true;
 
   # Minimal ASCII/TUI login manager
   services.displayManager.ly.enable = true;
@@ -154,6 +164,12 @@
     fzf
     jq
 
+    # Coding etc.
+    (python3.withPackages (ps: with ps; [
+      dbus-python
+    ]))
+    pixi
+
     # Shell / prompt
     fish
     starship
@@ -165,7 +181,11 @@
     thunar-archive-plugin
     tumbler
     logseq
-
+    thunar-volman
+    dosfstools
+    exfatprogs
+    ntfs3g
+    
     # Hyprland tools
     rofi
     wl-clipboard
@@ -199,6 +219,8 @@
     brightnessctl
     playerctl
     networkmanagerapplet
+    wdisplays
+    libnotify
 
     # Finley-ish fun/monitoring
     cava
