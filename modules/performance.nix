@@ -137,7 +137,7 @@ in
   environment.systemPackages = with pkgs; [
     libva-utils        # vainfo
     intel-gpu-tools    # intel_gpu_top
-    config.boot.kernelPackages.turbostat
+    pkgs.linuxPackages.turbostat
     powertop
     nvme-cli
     sysstat

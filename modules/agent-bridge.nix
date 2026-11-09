@@ -81,7 +81,7 @@ let
           [ -n "$w" ] && echo "''${p#/proc/} $w $(tr -d ' ' < $p/comm 2>/dev/null)"
         done | sort -k1,1; }
       snap > /tmp/agent-diag.io1
-      ${config.boot.kernelPackages.turbostat}/bin/turbostat --quiet --Summary --show Busy%,Bzy_MHz,Avg_MHz,PkgWatt,CorWatt,GFXWatt,PkgTmp,GFX%rc6,Pkg%pc2,Pkg%pc6 --interval 10 --num_iterations 1 2>&1
+      ${pkgs.linuxPackages.turbostat}/bin/turbostat --quiet --Summary --show Busy%,Bzy_MHz,Avg_MHz,PkgWatt,CorWatt,GFXWatt,PkgTmp,GFX%rc6,Pkg%pc2,Pkg%pc6 --interval 10 --num_iterations 1 2>&1
       snap > /tmp/agent-diag.io2
       echo "--- top writers during sample (KiB/s)"
       join /tmp/agent-diag.io1 /tmp/agent-diag.io2 \
