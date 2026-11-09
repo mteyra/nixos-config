@@ -128,6 +128,26 @@
         "type": "github"
       }
     },
+    "nixcare": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794266985,
+        "narHash": "sha256-MTMai/3egLpmRgwnQLDezIZ4v84ADoRX9erstN7WyEw=",
+        "owner": "mteyra",
+        "repo": "nixcare",
+        "rev": "967bbf3832687acc97a4caa3722ca598327f76f7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "mteyra",
+        "repo": "nixcare",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1781971108,
@@ -224,6 +244,7 @@
       "inputs": {
         "antigravity-nix": "antigravity-nix",
         "nix-cachyos-kernel": "nix-cachyos-kernel",
+        "nixcare": "nixcare",
         "nixpkgs": "nixpkgs_2",
         "noctalia": "noctalia"
       }

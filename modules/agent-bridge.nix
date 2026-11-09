@@ -104,6 +104,10 @@ let
       echo "=== done $(date -Is) ==="
     } > "$out" 2>&1
   '';
+  polkitVerdict =
+    if config.services.nixcare.agentBridge.mode == "open" then "polkit.Result.YES"
+    else if config.services.nixcare.agentBridge.mode == "auth" then "polkit.Result.AUTH_ADMIN_KEEP"
+    else "polkit.Result.AUTH_ADMIN";
 in
 {
   systemd.services.nixos-apply-switch = mkApply "switch";
@@ -132,7 +136,7 @@ in
                        "nixos-apply-boot.service",
                        "agent-diag.service"];
         if (allowed.indexOf(unit) >= 0 && (verb == "start" || verb == "restart")) {
-          return polkit.Result.YES;
+          return ${polkitVerdict};
         }
       }
     });

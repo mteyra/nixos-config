@@ -25,15 +25,21 @@
     };
 
     nix-cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";
+
+    nixcare = {
+      url = "github:mteyra/nixcare";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = inputs@{ self, nixpkgs, noctalia, nix-cachyos-kernel, ... }:
+  outputs = inputs@{ self, nixpkgs, noctalia, nix-cachyos-kernel, nixcare, ... }:
     {
       nixosConfigurations.X1 = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs = { inherit inputs; };
         modules = [
           ./hosts/X1.nix
+          nixcare.nixosModules.default
 
           {
             nixpkgs.overlays = [

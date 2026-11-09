@@ -6,9 +6,17 @@
     ./noctalia.nix
     ../modules/agent-bridge.nix
     ../modules/performance.nix
-    ../modules/telemetry.nix
     ../modules/tablet-mode.nix
   ];
+
+  services.nixcare = {
+    enable = true;
+    user = "haunted";
+    flakePath = "/etc/nixos";
+    hostName = "X1";
+    clean.enable = false; # Will enable once 5-month catch-up is verified
+    agentBridge.mode = "open"; # Will switch to "auth" after catch-up completes
+  };
 
   nixpkgs.config.allowUnfree = true;
   
