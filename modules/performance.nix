@@ -104,7 +104,7 @@ in
     description = "Select power profile and Intel EPP from AC state";
     after = [ "power-profiles-daemon.service" ];
     wants = [ "power-profiles-daemon.service" ];
-    wantedBy = [ "multi-user.target" ];
+    wantedBy = [ "power-profiles-daemon.service" ];
     serviceConfig.Type = "oneshot";
     script = ''
       sleep 1
