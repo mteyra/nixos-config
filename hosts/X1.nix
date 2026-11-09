@@ -50,6 +50,7 @@
   services.udisks2.enable = true;
   services.gvfs.enable = true;
   services.fprintd.enable = true;
+  services.flatpak.enable = true;
 
   # The internal X1 Yoga Wacom touch/pen sensor has dropped off USB after
   # suspend on this machine. Keep it out of runtime autosuspend when present.
@@ -148,6 +149,7 @@
     # Core terminal tools
     vim
     neovim
+    vscode
     nano
     wget
     curl
@@ -163,12 +165,25 @@
     ripgrep
     fzf
     jq
+    zapzap
+    libreoffice
+
+
 
     # Coding etc.
     (python3.withPackages (ps: with ps; [
       dbus-python
     ]))
     pixi
+    uv
+    gh
+    jupyter
+
+    # AI coding agents
+    codex
+    inputs.antigravity-nix.packages.${pkgs.stdenv.hostPlatform.system}.google-antigravity
+    inputs.antigravity-nix.packages.${pkgs.stdenv.hostPlatform.system}.google-antigravity-cli
+    google-chrome
 
     # Shell / prompt
     fish
@@ -235,6 +250,9 @@
     # Social / gaming
     vesktop
     protonplus
+    zoom-us
+
+    pkgs.openvpn
   ];
 
   fonts.packages = with pkgs; [
