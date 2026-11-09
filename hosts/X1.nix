@@ -4,6 +4,8 @@
   imports = [
     ../hardware-configuration.nix
     ./noctalia.nix
+    ../modules/agent-bridge.nix
+    ../modules/performance.nix
   ];
 
   nixpkgs.config.allowUnfree = true;
@@ -190,7 +192,7 @@
     starship
 
     # Browser / terminal
-    firefox
+    # firefox -> programs.firefox in modules/performance.nix
     kitty
     thunar
     thunar-archive-plugin
