@@ -27,6 +27,12 @@ in
       "media.ffmpeg.vaapi.enabled" = true;
       "media.hardware-video-decoding.enabled" = true;
       "media.av1.enabled" = false;
+      # Stop Firefox from writing 11+ GiB/day to Btrfs on NVMe (measured in diag.log):
+      # cache HTTP assets in RAM (up to 512 MiB of 16 GiB) and checkpoint session every 60s instead of 15s.
+      "browser.cache.disk.enable" = false;
+      "browser.cache.memory.enable" = true;
+      "browser.cache.memory.capacity" = 524288;
+      "browser.sessionstore.interval" = 60000;
     };
   };
 
@@ -37,6 +43,22 @@ in
   #    Values follow the kernel/Fedora/Pop!_OS guidance for zram-only swap.
   # ---------------------------------------------------------------------------
   boot.kernelParams = [ "zswap.enabled=0" ];   # effective after next reboot
+  fileSystems."/".options = [ "noatime" "compress=zstd:1" ];
+  systemd.services.zswap-disable = {
+    description = "Disable zswap and apply Btrfs noatime+zstd at runtime";
+    wantedBy = [ "multi-user.target" ];
+    path = [ pkgs.util-linux ];
+    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
+    script = ''
+      if [ -w /sys/module/zswap/parameters/enabled ]; then
+        echo N > /sys/module/zswap/parameters/enabled
+      fi
+      if [ -w /sys/module/zswap/parameters/shrink ]; then
+        echo 1 > /sys/module/zswap/parameters/shrink 2>/dev/null || true
+      fi
+      mount -o remount,noatime,compress=zstd:1 / 2>/dev/null || true
+    '';
+  };
   boot.kernel.sysctl = {
     "vm.swappiness" = 180;              # zram is far cheaper than dropping page cache
     "vm.page-cluster" = 0;              # no swap readahead on zram
@@ -69,24 +91,32 @@ in
   };
 
   # ---------------------------------------------------------------------------
-  # 5. Power profile follows the charger. Before: stuck on "power-saver"
-  #    (EPP=power, all cores pinned ~900 MHz even under load ~2.5).
-  #    AC -> performance, battery -> balanced. Manual changes still work until
-  #    the next plug/unplug event.
+  # 5. Power profile & EPP follow the charger.
+  #    Loop-3 telemetry discovery (`laptop-report`): setting PPD `performance`
+  #    on AC forced EPP=`performance`, locking all 8 threads at 3.6-4.1 GHz even
+  #    at 10 % CPU load and pushing package temp to 90-94 C at idle.
+  #    Using PPD `balanced` + EPP=`balance_performance` on AC lets idle cores
+  #    drop to 800 MHz / C-states (cool ~60-68 C) while still boosting active
+  #    threads to 3.9-4.2 GHz (44 W PL2) immediately on demand.
+  #    On battery: PPD `balanced` + EPP=`balance_power`.
   # ---------------------------------------------------------------------------
   systemd.services.power-profile-auto = {
-    description = "Select power profile from AC state";
+    description = "Select power profile and Intel EPP from AC state";
     after = [ "power-profiles-daemon.service" ];
     wants = [ "power-profiles-daemon.service" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig.Type = "oneshot";
     script = ''
       sleep 1
+      ${ppctl} set balanced
       if [ "$(cat /sys/class/power_supply/AC/online 2>/dev/null)" = 1 ]; then
-        ${ppctl} set performance
+        epp=balance_performance
       else
-        ${ppctl} set balanced
+        epp=balance_power
       fi
+      for f in /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference; do
+        [ -w "$f" ] && echo "$epp" > "$f"
+      done
     '';
   };
   services.udev.extraRules = ''
@@ -94,7 +124,15 @@ in
   '';
 
   # ---------------------------------------------------------------------------
-  # 6. Diagnostic tools used by the audit loop and the telemetry collector.
+  # 6. Wi-Fi stability (Intel 8265): disable aggressive Wi-Fi powersave that
+  #    caused missed beacons (Aug D-4) and GTK rekey timing glitches (R2-8).
+  #    Also enable IIO sensor proxy for the X1 Yoga 360° hinge & accelerometer.
+  # ---------------------------------------------------------------------------
+  networking.networkmanager.wifi.powersave = false;
+  hardware.sensor.iio.enable = true;
+
+  # ---------------------------------------------------------------------------
+  # 7. Diagnostic tools used by the audit loop and the telemetry collector.
   # ---------------------------------------------------------------------------
   environment.systemPackages = with pkgs; [
     libva-utils        # vainfo

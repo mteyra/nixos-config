@@ -6,6 +6,8 @@
     ./noctalia.nix
     ../modules/agent-bridge.nix
     ../modules/performance.nix
+    ../modules/telemetry.nix
+    ../modules/tablet-mode.nix
   ];
 
   nixpkgs.config.allowUnfree = true;
@@ -54,22 +56,8 @@
   services.fprintd.enable = true;
   services.flatpak.enable = true;
 
-  # The internal X1 Yoga Wacom touch/pen sensor has dropped off USB after
-  # suspend on this machine. Keep it out of runtime autosuspend when present.
-  services.udev.extraRules = ''
-    ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="056a", ATTR{idProduct}=="5144", TEST=="power/control", ATTR{power/control}="on"
-    ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="056a", ATTR{idProduct}=="5144", TEST=="power/autosuspend_delay_ms", ATTR{power/autosuspend_delay_ms}="-1"
-  '';
-
-  powerManagement.resumeCommands = ''
-    for dev in /sys/bus/usb/devices/*; do
-      [ -r "$dev/idVendor" ] || continue
-      [ "$(cat "$dev/idVendor")" = "056a" ] || continue
-      [ "$(cat "$dev/idProduct")" = "5144" ] || continue
-      [ -w "$dev/power/control" ] && echo on > "$dev/power/control"
-      [ -w "$dev/power/autosuspend_delay_ms" ] && echo -1 > "$dev/power/autosuspend_delay_ms"
-    done
-  '';
+  # Wacom touchscreen persistence & 360° hinge tablet-mode daemon are configured
+  # in ../modules/tablet-mode.nix.
 
   zramSwap = {
     enable = true;
@@ -141,6 +129,7 @@
   };
 
   environment.sessionVariables = {
+    NIXOS_OZONE_WL = "1";
     XCURSOR_THEME = "Bibata-Modern-Ice";
     XCURSOR_SIZE = "24";
     HYPRCURSOR_THEME = "Bibata-Modern-Ice";

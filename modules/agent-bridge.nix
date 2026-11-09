@@ -24,9 +24,19 @@ let
     log=${stateDir}/${mode}.log
     {
       echo "=== nixos-rebuild ${mode} started $(date -Is) ==="
+      chown -R haunted:users /etc/nixos/.git 2>/dev/null || true
+      ${pkgs.util-linux}/bin/runuser -u haunted -- ${pkgs.git}/bin/git -C /etc/nixos add -A 2>/dev/null || true
       echo "config commit: $(${pkgs.git}/bin/git -C /etc/nixos rev-parse --short HEAD 2>/dev/null) dirty=$(${pkgs.git}/bin/git -C /etc/nixos status --porcelain | wc -l)"
       /run/current-system/sw/bin/nixos-rebuild ${mode} --flake ${flakeRef}
       rc=$?
+      if [ "$rc" -eq 0 ]; then
+        ${pkgs.util-linux}/bin/runuser -u haunted -- ${pkgs.git}/bin/git -C /etc/nixos add -A 2>/dev/null || true
+        if ! ${pkgs.util-linux}/bin/runuser -u haunted -- ${pkgs.git}/bin/git -C /etc/nixos diff --cached --quiet 2>/dev/null; then
+          ${pkgs.util-linux}/bin/runuser -u haunted -- ${pkgs.git}/bin/git \
+            -c user.name="haunted" -c user.email="haunted@X1" \
+            -C /etc/nixos commit -m "nixos-rebuild ${mode}: $(date -Iseconds)" || true
+        fi
+      fi
       echo "=== finished $(date -Is) exit=$rc ==="
       exit $rc
     } > "$log" 2>&1
@@ -63,20 +73,34 @@ let
       echo "IA32_TEMPERATURE_TARGET 0x1a2: $(${pkgs.msr-tools}/bin/rdmsr -c 0x1a2 2>&1)"
       echo "IA32_PACKAGE_THERM_STATUS 0x1b1: $(${pkgs.msr-tools}/bin/rdmsr -c 0x1b1 2>&1)"
       echo "MSR_CORE_PERF_LIMIT_REASONS 0x64f: $(${pkgs.msr-tools}/bin/rdmsr -c 0x64f 2>&1)"
-      echo "--- turbostat 10s"
-      ${config.boot.kernelPackages.turbostat}/bin/turbostat --quiet --show Busy%,Bzy_MHz,Avg_MHz,PkgWatt,CorWatt,GFXWatt,PkgTmp,GFX%rc6,Pkg%pc2,Pkg%pc3,Pkg%pc6,Pkg%pc8,Pkg%pc10 --interval 10 --num_iterations 1 2>&1
-      echo "--- per-process IO since start (top 20 by write_bytes)"
-      for p in /proc/[0-9]*; do
-        w=$(awk '/^write_bytes/{print $2}' $p/io 2>/dev/null) || continue
-        r=$(awk '/^read_bytes/{print $2}' $p/io 2>/dev/null)
-        [ -n "$w" ] && echo "$((w/1048576)) MiB_w $((r/1048576)) MiB_r $(cat $p/comm 2>/dev/null) pid=''${p#/proc/}"
-      done | sort -rn | head -20
+      echo "--- vainfo (DRM renderD128)"
+      LIBVA_DRIVER_NAME=iHD ${pkgs.libva-utils}/bin/vainfo --display drm --device /dev/dri/renderD128 2>&1
+      echo "--- turbostat 10s + per-process IO rate over the same 10s"
+      snap() { for p in /proc/[0-9]*; do
+          w=$(${pkgs.gawk}/bin/awk '/^write_bytes/{print $2}' $p/io 2>/dev/null)
+          [ -n "$w" ] && echo "''${p#/proc/} $w $(tr -d ' ' < $p/comm 2>/dev/null)"
+        done | sort -k1,1; }
+      snap > /tmp/agent-diag.io1
+      ${config.boot.kernelPackages.turbostat}/bin/turbostat --quiet --Summary --show Busy%,Bzy_MHz,Avg_MHz,PkgWatt,CorWatt,GFXWatt,PkgTmp,GFX%rc6,Pkg%pc2,Pkg%pc6 --interval 10 --num_iterations 1 2>&1
+      snap > /tmp/agent-diag.io2
+      echo "--- top writers during sample (KiB/s)"
+      join /tmp/agent-diag.io1 /tmp/agent-diag.io2 \
+        | ${pkgs.gawk}/bin/awk '{d=($4-$2)/10240; if (d>0) printf "%9.1f KiB/s %s pid=%s\n", d, $3, $1}' \
+        | sort -rn | head -15
+      echo "--- top writers since process start (MiB)"
+      ${pkgs.gawk}/bin/awk '{printf "%9d MiB %s pid=%s\n", $2/1048576, $3, $1}' /tmp/agent-diag.io2 | sort -rn | head -15
+      rm -f /tmp/agent-diag.io1 /tmp/agent-diag.io2
+      echo "--- btrfs device stats / commit"
+      ${pkgs.btrfs-progs}/bin/btrfs device stats / 2>&1
+      grep -E ' / | /home ' /proc/mounts
       echo "--- btrfs"
       ${pkgs.btrfs-progs}/bin/btrfs filesystem usage -T / 2>&1 | head -20
       echo "--- nvme smart"
       ${pkgs.nvme-cli}/bin/nvme smart-log /dev/nvme0 2>&1
+      echo "--- wacom / usb / tablet kernel log"
+      ${config.systemd.package}/bin/journalctl -b -k --no-pager -q | grep -E -i 'wacom|056a|5144|usb 1-10|tablet|hinge|xhci' | tail -60
       echo "--- journal errors this boot (last 60)"
-      ${config.systemd.package}/bin/journalctl -b -p err --no-pager -q | tail -60
+      ${config.systemd.package}/bin/journalctl -b -p err --no-pager -q | grep -v 'Ignoring duplicate name' | tail -60
       echo "=== done $(date -Is) ==="
     } > "$out" 2>&1
   '';
@@ -88,6 +112,7 @@ in
   systemd.services.agent-diag = {
     description = "Agent bridge: root-only diagnostics snapshot";
     restartIfChanged = false;
+    path = with pkgs; [ coreutils gawk gnugrep procps util-linux ];
     serviceConfig = {
       Type = "oneshot";
       ExecStart = diagScript;
