@@ -101,11 +101,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794267528,
-        "narHash": "sha256-JLf8+1lhHfo6IiGN8twfybo6gmJWhQEND2BpU6aNB1c=",
+        "lastModified": 1794336037,
+        "narHash": "sha256-eL5wuoqbjklvFAiLCpG7YYGCZ7tNj3kSyR68Vf6KDsg=",
         "owner": "mteyra",
         "repo": "nixcare",
-        "rev": "8e1608c76bafc22aaddf22a934b8457649269085",
+        "rev": "5432974714e876138e3e61d2f61a709a8b41e56c",
         "type": "github"
       },
       "original": {
