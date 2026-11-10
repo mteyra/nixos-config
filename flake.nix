@@ -15,7 +15,8 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-	
+    nixpkgs-prev.url = "github:NixOS/nixpkgs/567a49d1913ce81ac6e9582e3553dd90a955875f";
+
     antigravity-nix = {
       url = "github:jacopone/antigravity-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -23,7 +24,7 @@
 
     noctalia = {
       url = "github:noctalia-dev/noctalia/legacy-v4";
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nixpkgs.follows = "nixpkgs-prev";
     };
 
     nix-cachyos-kernel.url = "github:xddxdd/nix-cachyos-kernel/release";
@@ -34,7 +35,7 @@
     };
   };
 
-  outputs = inputs@{ self, nixpkgs, noctalia, nix-cachyos-kernel, nixcare, ... }:
+  outputs = inputs@{ self, nixpkgs, nixpkgs-prev, noctalia, nix-cachyos-kernel, nixcare, ... }:
     {
       nixosConfigurations.X1 = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
@@ -46,6 +47,10 @@
           {
             nixpkgs.overlays = [
               nix-cachyos-kernel.overlays.pinned
+              (final: prev: {
+                codex = inputs.nixpkgs-prev.legacyPackages.${prev.stdenv.hostPlatform.system}.codex;
+                pixi = inputs.nixpkgs-prev.legacyPackages.${prev.stdenv.hostPlatform.system}.pixi;
+              })
             ];
           }
         ];

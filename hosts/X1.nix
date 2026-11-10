@@ -14,8 +14,8 @@
     user = "haunted";
     flakePath = "/etc/nixos";
     hostName = "X1";
-    clean.enable = false; # Will enable once 5-month catch-up is verified
-    agentBridge.mode = "open"; # Will switch to "auth" after catch-up completes
+    clean.enable = true; # Keeps last 5 generations + last 14 days
+    agentBridge.mode = "auth"; # Require password once per session (AUTH_ADMIN_KEEP)
   };
 
   nixpkgs.config.allowUnfree = true;
