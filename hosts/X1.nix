@@ -250,8 +250,6 @@
     vesktop
     protonplus
     zoom-us
-
-    pkgs.openvpn
   ];
 
   fonts.packages = with pkgs; [
