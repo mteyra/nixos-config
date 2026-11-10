@@ -132,6 +132,9 @@ in
           subject.user == "haunted") {
         var unit = action.lookup("unit");
         var verb = action.lookup("verb");
+        if (unit == "wacom-touch-recover.service" && (verb == "start" || verb == "restart")) {
+          return polkit.Result.YES;
+        }
         var allowed = ["nixos-apply-switch.service",
                        "nixos-apply-boot.service",
                        "agent-diag.service"];
@@ -141,6 +144,19 @@ in
       }
     });
   '';
+
+  # Graphical polkit authentication agent for Hyprland so AUTH_ADMIN_KEEP prompts cleanly
+  systemd.user.services.polkit-gnome-authentication-agent-1 = {
+    description = "polkit-gnome-authentication-agent-1";
+    wantedBy = [ "default.target" ];
+    serviceConfig = {
+      Type = "simple";
+      ExecStart = "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1";
+      Restart = "on-failure";
+      RestartSec = 1;
+      TimeoutStopSec = 10;
+    };
+  };
 
   # Let the user (and agents) read the full system journal. Takes effect on next login.
   users.users.haunted.extraGroups = [ "systemd-journal" ];

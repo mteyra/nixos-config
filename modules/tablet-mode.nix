@@ -66,39 +66,64 @@ let
       [ -w "$port/disable" ] && [ "$(cat "$port/disable" 2>/dev/null)" = "1" ] && echo 0 > "$port/disable" 2>/dev/null || true
     fi
 
-    # Wait briefly for EC power rail after lid open / S3 resume
-    sleep 1
-
-    # Check if Wacom 056a:5144 is present on USB bus
-    found=0
-    for dev in /sys/bus/usb/devices/*; do
-      [ -r "$dev/idVendor" ] || continue
-      if [ "$(cat "$dev/idVendor" 2>/dev/null)" = "056a" ] && [ "$(cat "$dev/idProduct" 2>/dev/null)" = "5144" ]; then
-        found=1
-        [ -w "$dev/power/control" ] && echo on > "$dev/power/control" 2>/dev/null || true
-        [ -w "$dev/power/autosuspend_delay_ms" ] && echo -1 > "$dev/power/autosuspend_delay_ms" 2>/dev/null || true
-      fi
-    done
-
-    # If still not attached and lid is open, cycle usb1-port10 once to force xHCI port re-enumeration
-    lid_state="$(cat /proc/acpi/button/lid/LID/state 2>/dev/null || true)"
-    if [ "$found" -eq 0 ] && echo "$lid_state" | grep -q "open"; then
-      if [ -w "$port/disable" ]; then
-        echo 1 > "$port/disable" 2>/dev/null || true
-        sleep 0.5
-        echo 0 > "$port/disable" 2>/dev/null || true
-        sleep 1
-      fi
+    # Helper to check if Wacom 056a:5144 is present on USB bus
+    check_wacom() {
       for dev in /sys/bus/usb/devices/*; do
         [ -r "$dev/idVendor" ] || continue
         if [ "$(cat "$dev/idVendor" 2>/dev/null)" = "056a" ] && [ "$(cat "$dev/idProduct" 2>/dev/null)" = "5144" ]; then
           [ -w "$dev/power/control" ] && echo on > "$dev/power/control" 2>/dev/null || true
           [ -w "$dev/power/autosuspend_delay_ms" ] && echo -1 > "$dev/power/autosuspend_delay_ms" 2>/dev/null || true
+          return 0
         fi
       done
+      return 1
+    }
+
+    if check_wacom; then
+      ${pkgs.kmod}/bin/modprobe wacom 2>/dev/null || true
+      exit 0
+    fi
+
+    # If lid is open and Wacom 056a:5144 is missing after lid close / S3 sleep,
+    # invoke the ThinkPad X1 Yoga Gen 3 EC lid-open ACPI query (\_SB.PCI0.LPCB.EC._Q2A)
+    # to re-enable the 3.3V Wacom digitizer power rail.
+    lid_state="$(cat /proc/acpi/button/lid/LID/state 2>/dev/null || true)"
+    if echo "$lid_state" | grep -q "open"; then
+      if [ ! -e /proc/acpi/call ]; then
+        ${pkgs.kmod}/bin/modprobe acpi_call 2>/dev/null || true
+      fi
+      if [ ! -e /proc/acpi/call ] && [ "$(uname -r)" = "7.1.1-cachyos" ]; then
+        ${pkgs.kmod}/bin/insmod /nix/store/36z6mi6yxin9cgd59n5c2qxsifa2q8bg-acpi-call-1.2.2-7.1.1/lib/modules/7.1.1-cachyos/misc/acpi_call.ko 2>/dev/null || true
+      fi
+      if [ -w /proc/acpi/call ]; then
+        echo '\_SB.PCI0.LPCB.EC._Q2A' > /proc/acpi/call 2>/dev/null || true
+        sleep 1.5
+      fi
+
+      if ! check_wacom && [ -w "$port/disable" ]; then
+        echo 1 > "$port/disable" 2>/dev/null || true
+        sleep 0.5
+        echo 0 > "$port/disable" 2>/dev/null || true
+        sleep 1
+        check_wacom || true
+      fi
     fi
 
     ${pkgs.kmod}/bin/modprobe wacom 2>/dev/null || true
+  '';
+
+  wacomLidWatchdogScript = pkgs.writeShellScript "wacom-lid-watchdog" ''
+    set -u
+    while true; do
+      if [ ! -e /sys/bus/usb/devices/1-10 ]; then
+        lid_state="$(cat /proc/acpi/button/lid/LID/state 2>/dev/null || true)"
+        if echo "$lid_state" | grep -q "open"; then
+          ${wacomRecoverScript} || true
+          sleep 12
+        fi
+      fi
+      sleep 3
+    done
   '';
 
   tabletHingeDaemonPy = pkgs.writeText "tablet-hinge-daemon.py" ''
@@ -320,11 +345,13 @@ let
   '';
 in
 {
-  # 1. Kernel parameters to prevent Wacom 056a:5144 disconnect across lid close + S3 sleep
+  # 1. Kernel parameters & acpi_call module for ThinkPad X1 Yoga Gen 3 EC _Q2A digitizer wake
   boot.kernelParams = [
     "button.lid_init_state=open"
     "usbcore.quirks=056a:5144:k"
   ];
+  boot.extraModulePackages = [ config.boot.kernelPackages.acpi_call ];
+  boot.kernelModules = [ "acpi_call" ];
 
   # 2. Udev rules for both the parent xHCI root hub port (usb1-port10) and the Wacom device (056a:5144)
   services.udev.extraRules = ''
@@ -337,19 +364,40 @@ in
     ACTION=="add|change", SUBSYSTEM=="usb", ATTR{idVendor}=="056a", ATTR{idProduct}=="5144", TEST=="power/autosuspend_delay_ms", ATTR{power/autosuspend_delay_ms}="-1"
   '';
 
-  # 3. Boot & resume enforcement for usb1-port10 and Wacom touchscreen
+  # 3. Boot & post-resume enforcement for ThinkPad X1 Yoga Gen 3 Wacom touchscreen (\_SB.PCI0.LPCB.EC._Q2A)
   systemd.services.wacom-touch-recover = {
-    description = "Ensure ThinkPad X1 Yoga Wacom touchscreen port (usb1-port10) is powered and bound";
-    wantedBy = [ "multi-user.target" ];
+    description = "Ensure ThinkPad X1 Yoga Wacom touchscreen port (usb1-port10) and EC _Q2A rail are active";
+    after = [
+      "multi-user.target"
+      "suspend.target"
+      "hibernate.target"
+      "hybrid-sleep.target"
+      "suspend-then-hibernate.target"
+    ];
+    wantedBy = [
+      "multi-user.target"
+      "suspend.target"
+      "hibernate.target"
+      "hybrid-sleep.target"
+      "suspend-then-hibernate.target"
+    ];
     serviceConfig = {
       Type = "oneshot";
       ExecStart = wacomRecoverScript;
     };
   };
 
-  powerManagement.resumeCommands = ''
-    ${wacomRecoverScript} &
-  '';
+  # 3b. Lid-open watchdog (handles docked lid close/open where suspend.target does not fire)
+  systemd.services.wacom-lid-watchdog = {
+    description = "Watch ThinkPad X1 Yoga lid state and wake Wacom digitizer if missing when lid is open";
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "simple";
+      ExecStart = wacomLidWatchdogScript;
+      Restart = "always";
+      RestartSec = 5;
+    };
+  };
 
   # 4. User daemon for 360° Hinge -> Tablet Mode input auto-disable in Hyprland
   systemd.user.services.tablet-hinge-guard = {
