@@ -22,6 +22,9 @@
     wantedBy = [ "graphical-session.target" ];
     partOf = [ "graphical-session.target" ];
     after = [ "graphical-session.target" ];
+    environment = {
+      QSG_RHI_BACKEND = "vulkan";
+    };
     serviceConfig = {
       ExecStart = "${inputs.noctalia.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/noctalia-shell";
       Restart = "always";
