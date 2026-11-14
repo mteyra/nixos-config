@@ -98,14 +98,15 @@
       "inputs": {
         "nixpkgs": [
           "nixpkgs"
-        ]
+        ],
+        "nixpkgs-intel-darwin": "nixpkgs-intel-darwin"
       },
       "locked": {
-        "lastModified": 1794336037,
-        "narHash": "sha256-eL5wuoqbjklvFAiLCpG7YYGCZ7tNj3kSyR68Vf6KDsg=",
+        "lastModified": 1794683793,
+        "narHash": "sha256-35cuKBJjAH2nBzua8vL5R4wn/5IkOYtD9NU9ic2xdXQ=",
         "owner": "mteyra",
         "repo": "nixcare",
-        "rev": "5432974714e876138e3e61d2f61a709a8b41e56c",
+        "rev": "f577c98618fac4ce101454a1ed425f906da063b8",
         "type": "github"
       },
       "original": {
@@ -126,6 +127,22 @@
       "original": {
         "owner": "NixOS",
         "ref": "nixos-unstable-small",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs-intel-darwin": {
+      "locked": {
+        "lastModified": 1794217284,
+        "narHash": "sha256-Ya0ojDh1BF5zgyZRlehygC0ZvvEg2WaGZWn1xiNozmM=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "f4244ef33645badc8157562b5e80748929b396c2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-26.05-darwin",
         "repo": "nixpkgs",
         "type": "github"
       }

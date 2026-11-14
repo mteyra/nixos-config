@@ -14,7 +14,29 @@
     user = "haunted";
     flakePath = "/etc/nixos";
     hostName = "X1";
-    clean.enable = true; # Keeps last 5 generations + last 14 days
+    # Daily health + upstream checks; weekly maintenance while plugged in.
+    onACPower = true;
+    optimise.enable = true;
+    clean = {
+      enable = true;
+      keepGenerations = 5;
+      keepDays = 14;
+      caches = []; # Personal caches are never removed automatically.
+      journalMaxUse = "500M";
+      btrfsAutoScrub = true;
+    };
+    update = {
+      enable = true;
+      maxJobs = 1;
+      cores = 2;
+      check.enable = true;
+    };
+    # Preserve the local tracking features already in use on this laptop.
+    track = {
+      enable = true;
+      activity.enable = true;
+      browserExtensions.enable = true;
+    };
     agentBridge.mode = "auth"; # Require password once per session (AUTH_ADMIN_KEEP)
   };
 
