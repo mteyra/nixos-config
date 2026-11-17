@@ -5,6 +5,7 @@
     ../hardware-configuration.nix
     ./noctalia.nix
     ../modules/agent-bridge.nix
+    ../modules/fau-remote.nix
     ../modules/performance.nix
     ../modules/tablet-mode.nix
   ];

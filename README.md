@@ -16,7 +16,8 @@ nixos-config/
     ├── performance.nix        VA-API video, zram, battery charge limit 85–90 %, AC-aware power profiles, 1 s boot menu
     ├── tablet-mode.nix        keeps the Wacom touchscreen and pen alive after suspend; turns off keyboard,
     │                          touchpad and TrackPoint in tent and tablet mode
-    └── agent-bridge.nix       a fixed set of root actions AI agents may start (see below)
+    ├── agent-bridge.nix       a fixed set of root actions AI agents may start (see below)
+    └── fau-remote.nix         eduVPN client and `ssh cip` / `ssh gpu` shortcuts to FAU's CS CIP pool
 ```
 
 ## Inputs
