@@ -2,11 +2,17 @@
 
 # FAU remote machines: eduVPN client and SSH shortcuts
 # ====================================================
-#   fau          open (or reattach) the tmux session "main" on the Compute Cloud VM
-#   ssh fau      plain SSH to the VM (also the host name for VS Code Remote-SSH)
+#   fau          connect eduVPN if needed, then open (or reattach) the tmux
+#                session "main" on the Compute Cloud VM
+#   ssh fau      plain SSH to the VM, also connecting eduVPN if needed; this is
+#                the host to use in VS Code Remote-SSH (alias: fau-cloud-compute)
+#   fau-vpn      only make sure eduVPN is up and the VM answers
 #   ssh cip      CS CIP pool, cip1e0 (i7-9700, 64 GB RAM, always on)
 #   ssh gpu      CS CIP pool, cip4a0 (i7-8700, RTX 2080, always on)
 #   ssh cipterm  CS CIP terminal server cipterm0
+#
+# eduVPN must have been set up once in the app (eduvpn-gui: FAU, Splittunnel);
+# the scripts then reconnect that saved server (number 1) on their own.
 #
 # Your FAU username is deliberately not in this public repo. Add it once to
 # ~/.ssh/config (read before this file, so its User wins):
@@ -14,23 +20,54 @@
 #   Host cip gpu cipterm *.cip.cs.fau.de
 #     User <your IdM username>
 #
-# eduVPN (`eduvpn-gui`, search "FAU") is needed for machines on FAU's
-# internal network, such as Compute Cloud VMs. Host list and SSH CA:
-# https://wwwcip.cs.fau.de/documentation/services.en.html
+# CIP host list and SSH CA: https://wwwcip.cs.fau.de/documentation/services.en.html
+# The VM's own setup and agent rules live in vm/fau/ in this repo.
 
 let
   vmAddress = "172.17.67.63"; # RRZE Compute Cloud VM "fau", network FAU-Intern
 
-  fau = pkgs.writeShellScriptBin "fau" ''
-    if ! timeout 3 bash -c '</dev/tcp/${vmAddress}/22' 2>/dev/null; then
-      echo "The FAU VM isn't reachable. Connect eduVPN first (run eduvpn-gui, choose Splittunnel)."
-      exit 1
+  # Make sure the VM answers on port 22, connecting eduVPN first if it doesn't.
+  # All messages go to stderr: this also runs inside ssh's ProxyCommand, where
+  # stdout carries the SSH connection itself.
+  fauVpn = pkgs.writeShellScriptBin "fau-vpn" ''
+    reachable() { timeout 2 bash -c '</dev/tcp/${vmAddress}/22' 2>/dev/null; }
+
+    reachable && exit 0
+
+    echo "Connecting eduVPN..." >&2
+    ${pkgs.eduvpn-client}/bin/eduvpn-cli connect -n 1 </dev/null >&2 2>&1 || true
+
+    for _ in $(seq 1 10); do
+      if reachable; then
+        echo "eduVPN connected." >&2
+        exit 0
+      fi
+      sleep 1
+    done
+
+    if ${pkgs.eduvpn-client}/bin/eduvpn-cli status 2>/dev/null | grep -q '^Connected to'; then
+      echo "eduVPN is up, but the VM doesn't answer. Is it running? Check https://cc.rrze.de" >&2
+    else
+      echo "Couldn't connect eduVPN. Open eduvpn-gui, connect FAU (Splittunnel) once, then try again." >&2
     fi
-    exec ssh -t fau tmux new -A -s main
+    exit 1
+  '';
+
+  # ProxyCommand for the VM: ensure the VPN, then hand ssh a plain TCP pipe.
+  fauProxy = pkgs.writeShellScriptBin "fau-proxy" ''
+    ${fauVpn}/bin/fau-vpn </dev/null >&2 || exit 1
+    exec ${pkgs.socat}/bin/socat - "TCP:$1:$2"
+  '';
+
+  # One command: VPN, SSH, and the persistent tmux session "main".
+  # TERM is set because the VM may not know kitty's terminal type.
+  fau = pkgs.writeShellScriptBin "fau" ''
+    ${fauVpn}/bin/fau-vpn || exit 1
+    TERM=xterm-256color exec ssh -t fau tmux new -A -s main
   '';
 in
 {
-  environment.systemPackages = [ pkgs.eduvpn-client fau ];
+  environment.systemPackages = [ pkgs.eduvpn-client fau fauVpn ];
 
   # Trust the CIP pool's SSH certificate authority, so CIP hosts are verified
   # without a "trust this host?" prompt on each new machine.
@@ -46,10 +83,11 @@ in
   };
 
   programs.ssh.extraConfig = ''
-    Host fau
+    Host fau fau-cloud-compute
       HostName ${vmAddress}
+      HostKeyAlias ${vmAddress}
       User ubuntu
-      ConnectTimeout 5
+      ProxyCommand ${fauProxy}/bin/fau-proxy %h %p
       ServerAliveInterval 30
 
     Host cip

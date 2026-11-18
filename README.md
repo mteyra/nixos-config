@@ -12,12 +12,15 @@ nixos-config/
 ├── hosts/
 │   ├── X1.nix                 the machine: boot, desktop, users, packages, services
 │   └── noctalia.nix           Noctalia shell: package, binary caches, auto-restarting user service
-└── modules/
-    ├── performance.nix        VA-API video, zram, battery charge limit 85–90 %, AC-aware power profiles, 1 s boot menu
-    ├── tablet-mode.nix        keeps the Wacom touchscreen and pen alive after suspend; turns off keyboard,
-    │                          touchpad and TrackPoint in tent and tablet mode
-    ├── agent-bridge.nix       a fixed set of root actions AI agents may start (see below)
-    └── fau-remote.nix         eduVPN client; `fau` opens the Compute Cloud VM, `ssh cip` / `ssh gpu` the CS CIP pool
+├── modules/
+│   ├── performance.nix        VA-API video, zram, battery charge limit 85–90 %, AC-aware power profiles, 1 s boot menu
+│   ├── tablet-mode.nix        keeps the Wacom touchscreen and pen alive after suspend; turns off keyboard,
+│   │                          touchpad and TrackPoint in tent and tablet mode
+│   ├── agent-bridge.nix       a fixed set of root actions AI agents may start (see below)
+│   └── fau-remote.nix         `fau` / `ssh fau`: connects eduVPN if needed, then the Compute Cloud VM;
+│                              `ssh cip` / `ssh gpu` for the CS CIP pool
+└── vm/fau/                    the Ubuntu VM at FAU (not NixOS): setup.sh, the AGENTS.md rules every
+                               agent there reads, and vmcheck (lists work not yet pushed to GitHub)
 ```
 
 ## Inputs
