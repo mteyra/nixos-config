@@ -7,6 +7,7 @@
     ../modules/agent-bridge.nix
     ../modules/battery-guard.nix
     ../modules/fau-remote.nix
+    ../modules/health.nix
     ../modules/home.nix
     ../modules/performance.nix
     ../modules/tablet-mode.nix
