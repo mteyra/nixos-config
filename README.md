@@ -17,6 +17,8 @@ nixos-config/
 │   └── noctalia.nix           Noctalia shell: package, binary caches, auto-restarting user service
 ├── modules/
 │   ├── home.nix               home-manager: links ~/.config to home/, editable and tracked by git
+│   ├── health.nix             Google's ghealth tool and a twice-daily sync of my Fitbit data to ~/.local/share/health
+│   ├── health-sync.py         the sync itself: one JSON file per data type and day
 │   ├── performance.nix        VA-API video, zram, battery charge limit 85–90 %, AC-aware power profiles, 1 s boot menu
 │   ├── tablet-mode.nix        keeps the Wacom touchscreen and pen alive after suspend; turns off keyboard,
 │   │                          touchpad and TrackPoint in tent and tablet mode

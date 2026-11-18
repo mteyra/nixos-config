@@ -58,6 +58,20 @@ Not in the repository:
 | Codex | `codex`, sign in with ChatGPT | `codex login --device-auth` (enable "device code login" in ChatGPT → Settings → Security first) |
 | GitHub CLI | `gh auth login` | the same |
 
+### 7. Fitbit data (Google Health)
+
+`modules/health.nix` installs Google's `ghealth` tool and a timer that saves your Fitbit data to `~/.local/share/health/` at 08:00 and 20:00. It needs a one-time connection to your Google account, and nothing here costs money.
+
+1. **Create a project:** https://console.cloud.google.com → project picker → **New project** (any name, e.g. `health`). Don't add a billing account or card; if anything asks for one, stop.
+2. **Turn on the API:** APIs & Services → Library → search **Google Health API** → **Enable**.
+3. **Consent screen:** Google Auth Platform → **Get started**. User type **External**, your email as contact. Under **Audience**, add your own Gmail as a test user, then click **Publish app**. Published, your login lasts; left in "Testing", it expires every 7 days.
+4. **Login client:** Google Auth Platform → **Clients** → **Create client** → type **Desktop app** → create, then **download the JSON**.
+5. **Connect:** `ghealth setup --client-secret ~/Downloads/client_secret_*.json`. Choose the **read-only** scopes. In the browser, Google warns that the app isn't verified: that's your own app, so click **Advanced → Go to … (unsafe)** and allow.
+6. **Check it works:** `ghealth data steps daily-rollup --from yesterday --to today`
+7. **Fetch your history once:** `health-sync --since 2026-01-01` (use the day you started wearing the Air). After that the timer keeps it current; `systemctl --user list-timers health-sync` shows the next run.
+
+Your login is kept in `~/.config/ghealth/`, which is not part of this repository. If it ever expires, you get a pop-up; run `ghealth auth login`.
+
 ## Rebuilding the cloud VM from scratch
 
 If the VM is deleted, or your access ends and starts again, build a new one at https://cc.rrze.de:
