@@ -17,7 +17,7 @@ nixos-config/
     ├── tablet-mode.nix        keeps the Wacom touchscreen and pen alive after suspend; turns off keyboard,
     │                          touchpad and TrackPoint in tent and tablet mode
     ├── agent-bridge.nix       a fixed set of root actions AI agents may start (see below)
-    └── fau-remote.nix         eduVPN client and `ssh cip` / `ssh gpu` shortcuts to FAU's CS CIP pool
+    └── fau-remote.nix         eduVPN client; `fau` opens the Compute Cloud VM, `ssh cip` / `ssh gpu` the CS CIP pool
 ```
 
 ## Inputs
