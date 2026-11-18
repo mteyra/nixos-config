@@ -2,7 +2,7 @@
 
     health-sync                     # the last 7 days (what the timer runs)
     health-sync --days 30           # the last 30 days
-    health-sync --since 2026-01-01  # everything since a date, in 30-day chunks
+    health-sync --since 2026-01-01  # everything since a date, fetched in chunks
 
 Files: <data dir>/<type>/<YYYY-MM-DD>.json, each a JSON list of data points as
 ghealth prints them (simplified JSON). Days that are re-fetched are overwritten,
@@ -29,7 +29,12 @@ DATA_DIR = Path(
     os.environ.get("HEALTH_DATA_DIR",
                    Path.home() / ".local" / "share" / "health")
 )
-CHUNK_DAYS = 30  # the API allows up to 90 days per request; stay well below
+# Days per request. The API allows 90 for most types, but only 14 for these
+# rollups (ghealth refuses longer ranges with exit 3).
+CHUNK_DAYS = 30
+SHORT_CHUNK_DAYS = 14
+SHORT_RANGE_TYPES = {"heart-rate", "total-calories", "active-minutes",
+                     "calories-in-heart-rate-zone"}
 
 # (data type, ghealth operation, extra flags)
 SOURCES = [
@@ -114,9 +119,9 @@ def save(data_type, points):
     return len(by_day)
 
 
-def chunks(start, end):
+def chunks(start, end, size):
     while start <= end:
-        stop = min(start + dt.timedelta(days=CHUNK_DAYS - 1), end)
+        stop = min(start + dt.timedelta(days=size - 1), end)
         yield start, stop
         start = stop + dt.timedelta(days=1)
 
@@ -147,7 +152,9 @@ def main():
         for data_type, operation, flags in SOURCES:
             try:
                 points = []
-                for chunk_start, chunk_end in chunks(start, today):
+                size = SHORT_CHUNK_DAYS if data_type in SHORT_RANGE_TYPES \
+                    else CHUNK_DAYS
+                for chunk_start, chunk_end in chunks(start, today, size):
                     points += fetch(data_type, operation, flags,
                                     chunk_start, chunk_end)
                 summary["days_saved"][data_type] = save(data_type, points)
