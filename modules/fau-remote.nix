@@ -6,7 +6,7 @@
 #                session "main" on the Compute Cloud VM
 #   ssh fau      plain SSH to the VM, also connecting eduVPN if needed; this is
 #                the host to use in VS Code Remote-SSH (alias: fau-cloud-compute)
-#   fau-vpn      only make sure eduVPN is up and the VM answers
+#   fau-vpn      only make sure eduVPN is up and the VM answers; `fau-vpn off` disconnects
 #   ssh cip      CS CIP pool, cip1e0 (i7-9700, 64 GB RAM, always on)
 #   ssh gpu      CS CIP pool, cip4a0 (i7-8700, RTX 2080, always on)
 #   ssh cipterm  CS CIP terminal server cipterm0
@@ -26,30 +26,68 @@
 let
   vmAddress = "172.17.67.63"; # RRZE Compute Cloud VM "fau", network FAU-Intern
 
-  # Make sure the VM answers on port 22, connecting eduVPN first if it doesn't.
-  # All messages go to stderr: this also runs inside ssh's ProxyCommand, where
-  # stdout carries the SSH connection itself.
+  # fau-vpn [off]: make sure the VM answers on port 22, starting eduVPN first if
+  # it doesn't; "fau-vpn off" disconnects. Messages go to stderr, because this
+  # also runs inside ssh's ProxyCommand, where stdout is the SSH connection.
+  #
+  # The dorm network blocks eduVPN's UDP (WireGuard) mode, so this connects in
+  # TCP mode (ProxyGuard). In that mode eduvpn-cli must keep running and waits
+  # for a key press, so it runs in its own background session with an input
+  # that never ends. Its log is in $XDG_RUNTIME_DIR/fau-vpn.log.
   fauVpn = pkgs.writeShellScriptBin "fau-vpn" ''
+    cli=${pkgs.eduvpn-client}/bin/eduvpn-cli
+    run="''${XDG_RUNTIME_DIR:-/tmp}/fau-vpn"
+
     reachable() { timeout 2 bash -c '</dev/tcp/${vmAddress}/22' 2>/dev/null; }
+    # Is eduvpn-cli itself still alive? (It is the process whose ID is saved.)
+    running() { [ -f "$run.pid" ] && kill -0 "$(cat "$run.pid")" 2>/dev/null; }
+    stop() {
+      if running; then
+        kill -INT "$(cat "$run.pid")" 2>/dev/null # eduvpn-cli disconnects on Ctrl+C
+        sleep 2
+      fi
+      # end the whole background group, including its "sleep infinity" input
+      [ -f "$run.pid" ] && kill -- "-$(cat "$run.pid")" 2>/dev/null
+      rm -f "$run.pid"
+      # a session left over from the app or an earlier run
+      if "$cli" status </dev/null 2>/dev/null | grep -q '^Connected to'; then
+        "$cli" disconnect </dev/null >/dev/null 2>&1
+      fi
+    }
+
+    if [ "''${1:-}" = off ]; then
+      stop
+      echo "eduVPN disconnected." >&2
+      exit 0
+    fi
+
+    # One connection attempt at a time (VS Code opens several SSH sessions).
+    exec 9>"$run.lock"
+    ${pkgs.util-linux}/bin/flock 9
 
     reachable && exit 0
 
-    echo "Connecting eduVPN..." >&2
-    ${pkgs.eduvpn-client}/bin/eduvpn-cli connect -n 1 </dev/null >&2 2>&1 || true
+    echo "Connecting eduVPN (if a browser tab opens, log in there)..." >&2
+    stop
+    # setsid: its own session, so it survives the terminal or ssh that started it.
+    # exec: eduvpn-cli takes over the started process, so $! is its ID.
+    # shellcheck disable=SC2016
+    ${pkgs.util-linux}/bin/setsid bash -c 'exec "$0" connect -n 1 --tcp < <(exec sleep infinity)' "$cli" \
+      </dev/null >"$run.log" 2>&1 9>&- &
+    echo $! >"$run.pid"
 
-    for _ in $(seq 1 10); do
+    for _ in $(seq 1 45); do
       if reachable; then
         echo "eduVPN connected." >&2
         exit 0
       fi
-      sleep 1
+      running || break
+      sleep 2
     done
 
-    if ${pkgs.eduvpn-client}/bin/eduvpn-cli status 2>/dev/null | grep -q '^Connected to'; then
-      echo "eduVPN is up, but the VM doesn't answer. Is it running? Check https://cc.rrze.de" >&2
-    else
-      echo "Couldn't connect eduVPN. Open eduvpn-gui, connect FAU (Splittunnel) once, then try again." >&2
-    fi
+    echo "Couldn't reach the FAU VM through eduVPN. Last eduVPN messages:" >&2
+    grep -v 'level=DEBUG' "$run.log" | tail -n 5 >&2
+    echo "If eduVPN did connect, check that the VM is running: https://cc.rrze.de" >&2
     exit 1
   '';
 
