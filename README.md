@@ -18,6 +18,7 @@ nixos-config/
 │   ├── tablet-mode.nix        keeps the Wacom touchscreen and pen alive after suspend; turns off keyboard,
 │   │                          touchpad and TrackPoint in tent and tablet mode
 │   ├── agent-bridge.nix       a fixed set of root actions AI agents may start (see below)
+│   ├── battery-guard.nix      pop-ups at 20, 10 and 5 % battery; clean shutdown at 4 % instead of running flat
 │   └── fau-remote.nix         `fau` / `ssh fau`: connects eduVPN if needed, then the Compute Cloud VM;
 │                              `ssh cip` / `ssh gpu` for the CS CIP pool
 └── vm/fau/                    the Ubuntu VM at FAU (not NixOS): setup.sh, the AGENTS.md rules every
