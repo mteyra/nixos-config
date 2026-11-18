@@ -33,6 +33,11 @@
       url = "github:mteyra/nixcare";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = inputs@{ self, nixpkgs, nixpkgs-prev, noctalia, nix-cachyos-kernel, nixcare, ... }:

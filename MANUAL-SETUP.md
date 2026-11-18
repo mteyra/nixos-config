@@ -15,20 +15,19 @@ When you set something up by hand, add a line here.
 2. Replace `hardware-configuration.nix` with the new machine's own: `sudo nixos-generate-config --show-hardware-config > /etc/nixos/hardware-configuration.nix`.
 3. Rebuild: `sudo nixos-rebuild switch --flake /etc/nixos#X1`. When it asks about `extra-substituters` and `extra-trusted-public-keys`, answer `y`, including "permanently mark as trusted". Otherwise Nix compiles the kernel and shell itself, which takes hours.
 
-### 2. Personal settings (not tracked yet)
+### 2. Personal settings
 
-This repository has no home-manager, so the settings in your home folder aren't in git. Copy these from the old computer if they exist:
+Hyprland, Noctalia, kitty, fish, starship and VS Code settings live in `home/` in this repository. The rebuild in step 1 links `~/.config` to them (`modules/home.nix`), so they come back by themselves.
 
-| What | Where |
+To add them the first time (or after a new app's settings appear), run `bash /etc/nixos/home/adopt.sh`, follow what it prints, rebuild, then commit and push. When you change a setting later, it shows up in `git status`; commit it like any other change.
+
+Not in the repository:
+
+| What | How to bring it back |
 | --- | --- |
-| Hyprland keybinds, monitors, look | `~/.config/hypr/` |
-| Noctalia shell settings | `~/.config/noctalia/` |
-| Terminal, prompt, shell | `~/.config/kitty/`, `~/.config/starship.toml`, `~/.config/fish/` |
-| VS Code settings and keybinds | `~/.config/Code/User/` |
 | Firefox (bookmarks, logins, extensions) | sign in to Firefox Sync, or copy `~/.mozilla/` |
 | Flatpak apps | on the old computer run `flatpak list --app --columns=application`, then `flatpak install flathub <id>` for each |
-
-To see everything you'd be missing, run `ls ~/.config` on the old computer.
+| Anything else in `~/.config` | run `ls ~/.config` on the old computer and copy what you need |
 
 ### 3. SSH key and GitHub
 

@@ -6,6 +6,7 @@
     ./noctalia.nix
     ../modules/agent-bridge.nix
     ../modules/fau-remote.nix
+    ../modules/home.nix
     ../modules/performance.nix
     ../modules/tablet-mode.nix
   ];
