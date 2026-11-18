@@ -22,7 +22,8 @@ The VM isn't backed up, and access ends when Marc leaves FAU. Treat its disk as 
 
 ## Working here
 
-- You have `sudo`. `apt install` is fine for what a task needs; mention what you installed.
+- Several agents work here (Claude Code, Codex, and VS Code's built-in assistants), sometimes in the same repository. Before starting, run `git status` and `git pull --rebase`, and never discard or overwrite changes you didn't make.
+- You have `sudo`. `apt install` is fine for what a task needs; mention what you installed. Installed already: Node, Python with `uv` and `pipx`, `gh`, `ffmpeg`, `ripgrep`, `fd` (as `fdfind`), `jq`, `sqlite3`, `git-lfs`.
 - **Python:** Ubuntu blocks system-wide `pip install`. Use a virtual environment per project (`python3 -m venv .venv && . .venv/bin/activate`), or `pipx` for command-line tools.
 - **Long jobs** (test suites, renders, training) run inside tmux, because Marc's laptop may disconnect at any time.
 - **Servers** (dev servers, Jupyter) listen on `localhost` only. Marc opens them through VS Code's port forwarding or `ssh -L`. Never open ports to the outside, change the cloud's security groups, or request public IPs.
