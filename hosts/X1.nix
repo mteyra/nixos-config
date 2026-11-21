@@ -162,6 +162,12 @@
     dedicatedServer.openFirewall = true;
   };
 
+  # Blip peer-to-peer file transfer (github:blip-net/nix)
+  programs.blip = {
+    enable = true;
+    autostart.enable = true;
+  };
+
   environment.sessionVariables = {
     NIXOS_OZONE_WL = "1";
     XCURSOR_THEME = "Bibata-Modern-Ice";
@@ -205,6 +211,7 @@
     jupyter
 
     # AI coding agents
+    claude-code
     codex
     inputs.antigravity-nix.packages.${pkgs.stdenv.hostPlatform.system}.google-antigravity
     inputs.antigravity-nix.packages.${pkgs.stdenv.hostPlatform.system}.google-antigravity-cli
