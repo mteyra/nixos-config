@@ -59,6 +59,14 @@
   boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-bore;
   boot.kernelModules = [ "wacom" ];
 
+  # Stable LTS kernel fallback entry in systemd-boot (hold Space at boot to select).
+  # Default boot stays on CachyOS BORE for best efficiency; use the `lts` entry
+  # if a bleeding-edge kernel regresses i915 DP MST / external dock displays.
+  specialisation.lts.configuration = {
+    system.nixos.tags = [ "lts" ];
+    boot.kernelPackages = lib.mkForce pkgs.linuxPackages;
+  };
+
   boot.kernelParams = [
     "quiet"
     "loglevel=3"
@@ -81,6 +89,7 @@
   hardware.bluetooth.powerOnBoot = true;
 
   services.fwupd.enable = true;
+  services.hardware.bolt.enable = true;
   services.thermald.enable = true;
   services.upower.enable = true;
   services.power-profiles-daemon.enable = true;
