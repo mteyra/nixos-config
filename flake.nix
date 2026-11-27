@@ -38,9 +38,14 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    blip = {
+      url = "github:blip-net/nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = inputs@{ self, nixpkgs, nixpkgs-prev, noctalia, nix-cachyos-kernel, nixcare, ... }:
+  outputs = inputs@{ self, nixpkgs, nixpkgs-prev, noctalia, nix-cachyos-kernel, nixcare, blip, ... }:
     {
       nixosConfigurations.X1 = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
@@ -48,6 +53,7 @@
         modules = [
           ./hosts/X1.nix
           nixcare.nixosModules.default
+          blip.nixosModules.default
 
           {
             nixpkgs.overlays = [

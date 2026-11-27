@@ -21,6 +21,26 @@
         "type": "github"
       }
     },
+    "blip": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793408108,
+        "narHash": "sha256-TbGJBPTQgjJBd7bTjnx2cdPwHs7xhhDxsPiMl5cJ1p8=",
+        "owner": "blip-net",
+        "repo": "nix",
+        "rev": "8139dec7dd3be72ae5caefad69cc9eacd832fc99",
+        "type": "github"
+      },
+      "original": {
+        "owner": "blip-net",
+        "repo": "nix",
+        "type": "github"
+      }
+    },
     "flake-compat": {
       "flake": false,
       "locked": {
@@ -262,6 +282,7 @@
     "root": {
       "inputs": {
         "antigravity-nix": "antigravity-nix",
+        "blip": "blip",
         "home-manager": "home-manager",
         "nix-cachyos-kernel": "nix-cachyos-kernel",
         "nixcare": "nixcare",
