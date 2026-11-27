@@ -41,6 +41,17 @@
       enable = true;
       activity.enable = true;
       browserExtensions.enable = true;
+      # Sites with their own screen-time label (laptop widget, MP8). Any other
+      # site counts as "firefox". Names are lowercased by laptop-widget-push.
+      siteLabels = {
+        "claude.ai" = "claude.ai";
+        "chatgpt.com" = "chatgpt.com";
+        "gemini.google.com" = "gemini";
+        "aistudio.google.com" = "gemini";
+        "youtube.com" = "youtube";
+        "github.com" = "github";
+        "studon.fau.de" = "studon";
+      };
     };
     agentBridge.mode = "auth"; # Require password once per session (AUTH_ADMIN_KEEP)
   };
