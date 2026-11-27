@@ -9,6 +9,7 @@
     ../modules/fau-remote.nix
     ../modules/health.nix
     ../modules/home.nix
+    ../modules/laptop-widget.nix
     ../modules/performance.nix
     ../modules/tablet-mode.nix
   ];
