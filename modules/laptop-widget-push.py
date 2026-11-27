@@ -3,7 +3,8 @@
 Runs nixcare's `laptop-report --json` for today since local midnight and keeps:
   active_seconds, the top 10 labels (nixcare's fixed list: listed sites,
   Claude Code, <terminal>-shell, app names) with seconds, active seconds per
-  hour of today, yesterday's active time up to the same clock time, updated_at.
+  hour of today, yesterday's active time up to the same clock time, the last
+  7 days' totals (remembered in the state file), updated_at.
 No window titles, URLs or unlisted sites leave the laptop.
 
 Pushes only when the active time (or the day) changed since the last
@@ -22,7 +23,7 @@ import os
 import subprocess
 import sys
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 REPORT = os.environ.get("LAPTOP_REPORT", "laptop-report")
@@ -102,24 +103,49 @@ def summary():
     }, hours
 
 
-def yesterday_same_time(hours):
-    # active(yesterday 00:00 .. now-24h) = active(last hours+24 h) - active(last 24 h)
-    a = report(hours + 24).get("active_screen_seconds") or 0
-    b = report(24).get("active_screen_seconds") or 0
-    return max(0, round(a - b))
+def yesterday(hours, today_active):
+    """(yesterday up to the same clock time, all of yesterday), in seconds."""
+    since_yesterday = report(hours + 24).get("active_screen_seconds") or 0  # yesterday 00:00 .. now
+    last_24h = report(24).get("active_screen_seconds") or 0
+    same_time = max(0, round(since_yesterday - last_24h))
+    whole_day = max(0, round(since_yesterday - today_active))
+    return same_time, whole_day
+
+
+def load_state():
+    try:
+        return json.loads(STATE_FILE.read_text())
+    except (OSError, ValueError):
+        return {}
 
 
 def changed(now, payload):
-    try:
-        last = json.loads(STATE_FILE.read_text())
-    except (OSError, ValueError):
-        return True
+    last = load_state()
     return last.get("day") != now.date().isoformat() or last.get("active_seconds") != payload["active_seconds"]
 
 
-def remember(now, payload):
+def daily_totals(now, payload, yesterday_total):
+    """Each day's total, remembered here (the daemon can't sum a whole week in
+    one go). Today and yesterday come from the report; older days are what
+    the last push of that day saw. Keeps two weeks."""
+    days = load_state().get("days", {})
+    days[(now.date() - timedelta(days=1)).isoformat()] = yesterday_total
+    days[now.date().isoformat()] = payload["active_seconds"]
+    return dict(sorted(days.items())[-14:])
+
+
+def week_of(now, days):
+    keys = [(now.date() - timedelta(days=n)).isoformat() for n in range(6, -1, -1)]
+    return [{"day": k, "seconds": days.get(k)} for k in keys]
+
+
+def remember(now, payload, days):
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    STATE_FILE.write_text(json.dumps({"day": now.date().isoformat(), "active_seconds": payload["active_seconds"]}))
+    STATE_FILE.write_text(json.dumps({
+        "day": now.date().isoformat(),
+        "active_seconds": payload["active_seconds"],
+        "days": days,
+    }))
 
 
 def push(payload):
@@ -147,12 +173,14 @@ def main():
     if "--print" not in args and "--force" not in args and not changed(now, payload):
         print(f"unchanged ({payload['active_seconds']} s active), nothing pushed")
         return
-    payload["yesterday_seconds"] = yesterday_same_time(hours)
+    payload["yesterday_seconds"], yesterday_total = yesterday(hours, payload["active_seconds"])
+    days = daily_totals(now, payload, yesterday_total)
+    payload["week"] = week_of(now, days)
     if "--print" in args:
         print(json.dumps(payload, indent=2))
         return
     push(payload)
-    remember(now, payload)
+    remember(now, payload, days)
 
 
 if __name__ == "__main__":
