@@ -39,12 +39,45 @@ def report(hours):
     return json.loads(out)
 
 
+# Window class -> the name you know the app by. Everything is then lowercase,
+# with "-" instead of spaces ("Claude Code" -> "claude-code").
+RENAMES = {
+    "com.rtosta.zapzap": "whatsapp",
+    "zapzap": "whatsapp",
+    "vesktop": "discord",
+    "MainKt": "blip",  # Blip (a Kotlin app) shows up by its main class
+    "spring": "beyond-all-reason",  # the game runs on the Spring engine
+    "code": "vscode",
+    "Code": "vscode",
+    "google-chrome": "chrome",
+    "Google-chrome": "chrome",
+    ".eduvpn-gui-wrapped": "eduvpn",
+    "org.gnome.FileRoller": "file-roller",
+    "com.gabm.satty": "satty",
+}
+
+
+def tidy(name):
+    name = RENAMES.get(name, name).strip()
+    if name.startswith("."):
+        name = name[1:]
+    if name.endswith("-wrapped"):
+        name = name[: -len("-wrapped")]
+    if name.count(".") >= 2 and " " not in name:  # reverse-DNS app id
+        name = name.rsplit(".", 1)[1]
+    return "-".join(name.lower().split())
+
+
 def labels_of(rep):
     labels = rep.get("labels")
     if labels is None:  # nixcare without labels: fall back to app names
         labels = [{"label": a["app"], "seconds": a["seconds"]} for a in rep.get("apps") or []]
-    labels = sorted(labels, key=lambda x: x["seconds"], reverse=True)
-    return [{"label": x["label"], "seconds": round(x["seconds"])} for x in labels[:TOP_LABELS] if x["seconds"] >= 30]
+    sums = {}
+    for x in labels:
+        name = tidy(x["label"])
+        sums[name] = sums.get(name, 0) + x["seconds"]
+    top = sorted(sums.items(), key=lambda kv: kv[1], reverse=True)[:TOP_LABELS]
+    return [{"label": name, "seconds": round(sec)} for name, sec in top if sec >= 30]
 
 
 def hourly_of(rep, today):
