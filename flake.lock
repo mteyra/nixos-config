@@ -142,11 +142,11 @@
         "nixpkgs-intel-darwin": "nixpkgs-intel-darwin"
       },
       "locked": {
-        "lastModified": 1794933307,
-        "narHash": "sha256-gtBpWcrAprWoJhqs/U+ijxF6d1jHkeTXsnYUdolf29c=",
+        "lastModified": 1795787142,
+        "narHash": "sha256-DMBmcAa04Tutuzx9FPU4rpNPg4x9S+831JkTO/WdUGA=",
         "owner": "mteyra",
         "repo": "nixcare",
-        "rev": "939aa76cbc3775a2d2b0e4ee148f4690aa030794",
+        "rev": "73ce435382837b68a6c28f1352c62b1c63a4d9b0",
         "type": "github"
       },
       "original": {
