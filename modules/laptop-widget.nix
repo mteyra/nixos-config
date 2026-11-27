@@ -2,10 +2,14 @@
 
 # Laptop screen time on the iPhone home screen (MP8)
 # ===================================================
-# Every 15 minutes, `laptop-widget-push` (laptop-widget-push.py) sends today's
-# active time and top 3 app names to the Cloudflare Worker of
-# github.com/mteyra/laptop-widget, which the Scriptable widget reads.
-# No window titles, URLs or sites leave the laptop.
+# Every 5 minutes, `laptop-widget-push` (laptop-widget-push.py) checks today's
+# screen time and, only if the active time changed since its last push, sends
+# it to the Cloudflare Worker of github.com/mteyra/laptop-widget, which the
+# Scriptable widget reads. It also pushes once right before the laptop suspends.
+# What leaves the laptop: active time, the top 10 labels from nixcare's fixed
+# list (services.nixcare.track.siteLabels, Claude Code, kitty-shell, app names),
+# active minutes per hour, yesterday's total at the same time. No window
+# titles, URLs or unlisted sites.
 #
 # The token is read at run time from ~/.secrets/laptop-widget.token (chmod 600),
 # so it is never in the Nix store or this repository. Until that file exists,
@@ -47,14 +51,31 @@ in
     };
 
     systemd.user.timers.laptop-widget-push = {
-      Unit.Description = "Laptop widget every 15 min, catching up after sleep";
+      Unit.Description = "Laptop widget every 5 min, catching up after sleep";
       Timer = {
-        OnCalendar = "*:0/15";
+        OnCalendar = "*:0/5";
         # Runs once right away if a time was missed while the laptop was off;
         # calendar times missed during suspend fire on resume anyway.
         Persistent = true;
       };
       Install.WantedBy = [ "timers.target" ];
+    };
+  };
+
+  # One push right before suspend, so the phone has the last value while the
+  # laptop sleeps. A system unit, because user units don't see sleep.target.
+  # Short timeout: a dead network must never hold up the suspend.
+  systemd.services.laptop-widget-push-sleep = {
+    description = "Send the laptop widget its last value before suspend";
+    wantedBy = [ "sleep.target" ];
+    before = [ "sleep.target" ];
+    unitConfig.ConditionPathExists = "/home/haunted/.secrets/laptop-widget.token";
+    serviceConfig = {
+      Type = "oneshot";
+      User = "haunted";
+      ExecStart = "${push}/bin/laptop-widget-push";
+      Environment = environment;
+      TimeoutStartSec = "15s";
     };
   };
 }
