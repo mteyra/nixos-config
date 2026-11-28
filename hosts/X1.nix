@@ -49,6 +49,7 @@
         "gemini.google.com" = "gemini";
         "aistudio.google.com" = "gemini";
         "youtube.com" = "youtube";
+        "hdtodayz.org" = "hdtoday"; # films and series
         "github.com" = "github";
         "studon.fau.de" = "studon";
       };
